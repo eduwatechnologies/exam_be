@@ -10,6 +10,7 @@ const {
   updateQuestion,
   deleteQuestion,
   getLeaderboard,
+  getQuizStats,
 } = require("../controllers/quizController");
 
 const router = express.Router();
@@ -18,6 +19,7 @@ router.post("/sessions", authMiddleware, startSession);
 router.patch("/sessions/:sessionId/answers", authMiddleware, saveAnswer);
 router.post("/sessions/:sessionId/submit", authMiddleware, submitSession);
 router.get("/leaderboard", authMiddleware, getLeaderboard);
+router.get("/stats", getQuizStats);
 router.get("/questions", authMiddleware, listQuestions);
 router.post("/questions", authMiddleware, createQuestion);
 router.post("/questions/bulk", authMiddleware, createQuestionsBulk);

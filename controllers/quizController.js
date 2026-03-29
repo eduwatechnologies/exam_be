@@ -197,6 +197,56 @@ const getLeaderboard = async (req, res) => {
   return res.status(200).json({ ok: true, items });
 };
 
+const getQuizStats = async (req, res) => {
+  const expectedSecret = String(process.env.INTERNAL_STATS_SECRET || "").trim();
+  if (expectedSecret) {
+    const providedSecret = String(req.headers["x-internal-secret"] || "").trim();
+    if (!providedSecret || providedSecret !== expectedSecret) {
+      return res.status(403).json({ ok: false, error: "Forbidden" });
+    }
+  }
+
+  const subjectRaw = typeof req.query?.subject === "string" ? req.query.subject : "";
+  const subject = String(subjectRaw || "").trim().toLowerCase();
+
+  const startDateRaw = typeof req.query?.startDate === "string" ? req.query.startDate : "";
+  const endDateRaw = typeof req.query?.endDate === "string" ? req.query.endDate : "";
+  const startDate = startDateRaw ? new Date(startDateRaw) : null;
+  const endDate = endDateRaw ? new Date(endDateRaw) : null;
+
+  const match = {};
+  if (subject) match.subject = subject;
+  if (startDate || endDate) {
+    match.createdAt = {};
+    if (startDate && !Number.isNaN(startDate.getTime())) match.createdAt.$gte = startDate;
+    if (endDate && !Number.isNaN(endDate.getTime())) match.createdAt.$lte = endDate;
+    if (Object.keys(match.createdAt).length === 0) delete match.createdAt;
+  }
+
+  const stats = await QuizSession.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: null,
+        totalAttempts: { $sum: 1 },
+        users: { $addToSet: "$userId" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        totalAttempts: 1,
+        uniqueUsers: { $size: "$users" },
+      },
+    },
+  ]);
+
+  return res.status(200).json({
+    ok: true,
+    data: stats[0] || { totalAttempts: 0, uniqueUsers: 0 },
+  });
+};
+
 
 
 const startSession = async (req, res) => {
@@ -379,4 +429,5 @@ module.exports = {
   updateQuestion,
   deleteQuestion,
   getLeaderboard,
+  getQuizStats,
 };
